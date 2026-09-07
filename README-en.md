@@ -269,6 +269,18 @@ Open your browser and visit http://127.0.0.1:8501
 
 Open your browser and visit http://127.0.0.1:8080/docs or http://127.0.0.1:8080/redoc
 
+#### Research & Content Studio handoff
+
+The local WebUI accepts a one-time Research & Content Studio launch URL in the
+`research_launch` query parameter. The Research service creates a launch with
+`POST /api/v1/integrations/research/launches`; the MoneyPrinter WebUI consumes
+it once with `POST /api/v1/integrations/research/launches/{launch_id}/consume`.
+Both requests require the configured `x-api-key`. The handoff stores its payload
+server-side in Redis, expires after the requested short lifetime (15 minutes by
+default), never puts the script or credentials in the browser URL, and never
+starts generation automatically. Configure `MONEYPRINTER_INTERNAL_API_URL` and
+`MONEYPRINTER_API_KEY` for the WebUI when it runs in a separate container.
+
 ### Manual Deployment 📦
 
 #### ① Create a Python Virtual Environment

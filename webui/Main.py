@@ -58,6 +58,7 @@ from app.services import task as tm
 from app.services import version_checker
 from app.utils.logging_utils import configure_terminal_logger
 from app.utils import utils
+from webui.research_handoff import hydrate_research_launch, render_research_handoff_banner
 
 st.set_page_config(
     page_title="MoneyPrinterTurbo",
@@ -366,6 +367,7 @@ def _initialize_session_state():
 
 
 _initialize_session_state()
+hydrate_research_launch()
 
 
 def tr(key):
@@ -4667,7 +4669,12 @@ def _render_generation_controls(
     render_onboarding_tour()
     if start_button:
         _save_runtime_config()
-        task_id = st.session_state.get("pending_generation_task_id") or str(uuid4())
+        research_task_id = st.session_state.get("research_reserved_task_id")
+        task_id = research_task_id or st.session_state.get("pending_generation_task_id") or str(uuid4())
+        if research_task_id and sm.state.get_task(task_id):
+            _remove_active_generation_task(task_id)
+            st.error("The imported Research task ID is already in use. Import the launch again.")
+            st.stop()
         _add_active_generation_task(
             task_id,
             subject=params.video_subject or params.video_script or task_id,
@@ -4896,7 +4903,16 @@ def _render_generation_controls(
         try:
             st.toast(tr("Generating Video"))
             logger.info(tr("Start Generating Video"))
-            logger.info(utils.to_json(params))
+            logger.info(
+                "WebUI generation params summary: "
+                f"task_id={task_id}, source={'research' if research_task_id else 'webui'}, "
+                f"aspect={getattr(params.video_aspect, 'value', params.video_aspect)}, "
+                f"output_count={params.video_count}, "
+                f"has_script={bool(params.video_script.strip())}, "
+                f"has_terms={bool(params.video_terms.strip())}, "
+                f"has_audio={bool(params.custom_audio_file or params.voice_name)}, "
+                f"has_subtitles={bool(params.subtitle_enabled)}"
+            )
             webui_task.submit_generation(
                 task_id=task_id,
                 params=params,
@@ -4911,6 +4927,9 @@ def _render_generation_controls(
                 st.session_state["loomloom_video_quote"] = None
                 st.session_state["loomloom_video_input_signature"] = ""
                 st.session_state["loomloom_video_client_request_id"] = ""
+            if research_task_id:
+                st.session_state.pop("research_reserved_task_id", None)
+                st.session_state.pop("research_source", None)
         except Exception:
             _remove_active_generation_task(task_id)
             st.error(tr("Video Generation Failed"))
@@ -4926,6 +4945,7 @@ def _render_generation_controls(
 def _render_application():
     """按固定顺序渲染顶部栏、弹窗、生成表单和任务结果。"""
     _render_top_bar()
+    render_research_handoff_banner()
 
     if st.session_state.get("settings_dialog_open", False):
         _render_settings_dialog()

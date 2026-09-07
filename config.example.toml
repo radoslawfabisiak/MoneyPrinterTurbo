@@ -13,6 +13,11 @@ listen_port = 8080
 
 [app]
 
+# API key required by protected API routes, generated task files, and the
+# Research & Content Studio handoff. Keep this value private and pass the same
+# value in the x-api-key header.
+api_key = ""
+
 # -----------------------------------------------------------------------------
 # General / 通用设置
 # -----------------------------------------------------------------------------

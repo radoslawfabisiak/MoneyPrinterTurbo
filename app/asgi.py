@@ -12,6 +12,7 @@ from loguru import logger
 
 from app.config import config
 from app.models.exception import HttpException
+from app.controllers import base
 from app.router import root_api_router
 from app.utils import utils
 
@@ -69,6 +70,19 @@ def get_application() -> FastAPI:
 
 
 app = get_application()
+
+
+@app.middleware("http")
+async def protect_generated_task_files(request: Request, call_next):
+    if request.url.path == "/tasks" or request.url.path.startswith("/tasks/"):
+        try:
+            base.verify_token(request)
+        except HttpException as exc:
+            return JSONResponse(
+                status_code=exc.status_code,
+                content=utils.get_response(exc.status_code, exc.data, exc.message),
+            )
+    return await call_next(request)
 
 # Configures the CORS middleware for the FastAPI app
 cors_allowed_origins_str = os.getenv("CORS_ALLOWED_ORIGINS", "")
