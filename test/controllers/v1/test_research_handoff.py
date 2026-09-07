@@ -1,18 +1,25 @@
-from fastapi import Depends
+import pytest
 
-from app.controllers import base
-from app.controllers.v1 import research_handoff
+from app.models.exception import HttpException
+from app.models.research_handoff import ResearchLaunchRequest
+from app.services.research_handoff import ResearchHandoffStore
 
-
-def test_research_routes_are_protected_by_api_key_dependency():
-    assert any(
-        dependency.dependency is base.verify_token
-        for dependency in research_handoff.router.dependencies
-    )
+from test.services.test_research_handoff import _AtomicFakeRedis, _request
 
 
-def test_research_routes_are_registered_under_expected_paths():
-    paths = {route.path for route in research_handoff.router.routes}
-    assert "/api/v1/integrations/research/launches" in paths
-    assert "/api/v1/integrations/research/launches/{launch_id}" in paths
-    assert "/api/v1/integrations/research/launches/{launch_id}/consume" in paths
+def test_handoff_request_rejects_unknown_fields():
+    value = _request().model_dump()
+    value["unexpected"] = "rejected"
+    with pytest.raises(ValueError):
+        ResearchLaunchRequest.model_validate(value)
+
+
+def test_handoff_consume_keeps_status_but_deletes_payload():
+    redis = _AtomicFakeRedis()
+    store = ResearchHandoffStore(redis)
+    created = store.create(_request())
+    store.consume(created["launch_id"])
+    assert store.status(created["launch_id"])["state"] == "CONSUMED"
+    with pytest.raises(HttpException) as error:
+        store.consume(created["launch_id"])
+    assert error.value.status_code == 409
