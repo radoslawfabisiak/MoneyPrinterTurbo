@@ -1,4 +1,4 @@
-"""Application configuration - root APIRouter.
+"""Application configuration - root APIRouter
 
 Defines all FastAPI application endpoints.
 
