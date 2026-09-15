@@ -82,6 +82,24 @@ class TestVideoControllerHelpers(unittest.TestCase):
                         )
                 self.assertEqual(raised.exception.status_code, expected_status)
 
+    def test_task_file_uri_points_to_download_endpoint(self):
+        with patch.object(
+            video_controller.file_security,
+            "resolve_path_within_directory",
+            return_value="/tasks/task-1/final-1.mp4",
+        ):
+            uri = video_controller._task_file_to_uri(
+                "/tasks/task-1/final-1.mp4",
+                "http://moneyprinter-api:8080",
+                "/tasks",
+                "request-123",
+            )
+
+        self.assertEqual(
+            uri,
+            "http://moneyprinter-api:8080/api/v1/download/task-1/final-1.mp4",
+        )
+
     def test_parse_byte_range_supports_common_player_requests(self):
         """播放器常见的闭区间、开放区间和后缀区间都应得到准确边界。"""
         cases = (

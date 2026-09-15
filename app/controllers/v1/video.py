@@ -123,7 +123,10 @@ def _task_file_to_uri(file: str, endpoint: str, task_dir: str, request_id: str) 
         return file
 
     relative_path = os.path.relpath(resolved_path, task_dir).replace("\\", "/")
-    uri_path = f"tasks/{relative_path}"
+    # Output URLs must point at the download route.  The previous value
+    # (``/tasks/...``) looked like a valid resource path but there is no such
+    # route; the actual mounted endpoint is ``/api/v1/download/...``.
+    uri_path = f"api/v1/download/{relative_path}"
     if endpoint:
         return f"{endpoint.rstrip('/')}/{uri_path}"
     return f"/{uri_path}"
